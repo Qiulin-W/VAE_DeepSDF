@@ -16,7 +16,7 @@
   "num_sample_points": 4000,
   "output_stride": 16,
   "width_multiplier": 1.0,
-  "weight_decay": 1e-6,
+  "weight_decay": 1e-5,
   "dropout_keep_prob": 1.0,
   "enable_batchnorm": true,
   "batchnorm_decay": 0.9997,

@@ -121,12 +121,18 @@ class VAE_deepSDF:
         view_loss = view_loss / (1024*self.__object_per_batch)
 
         # KL divergence for posterior and prior of the latent variable
-        latent_var_constrains = -0.5*tf.reduce_sum(1 + self.z_logvar - self.z_mu**2 - tf.exp(self.z_logvar))
+        latent_var_constrains = (-0.5*tf.reduce_sum(1 + self.z_logvar - self.z_mu**2 - tf.exp(self.z_logvar))) / (1024*self.__object_per_batch*self.__num_views)
 
         # reconstruction loss is defined as in the DeepSDF paper
         self.cliped_sdf_pred = tf.clip_by_value(self.sdf_pred, -self.__delta, self.__delta)
         self.cliped_sdf_gt = tf.clip_by_value(self.gt_sdf, -self.__delta, self.__delta)
-        reconstruction_loss = tf.losses.absolute_difference(self.cliped_sdf_gt, self.cliped_sdf_pred)
+        reconstruction_loss = (tf.losses.absolute_difference(self.cliped_sdf_gt, self.cliped_sdf_pred))
+
+        # try different factors here to train the model
+        pose_estimation_loss = pose_estimation_loss * 20
+        view_loss = view_loss * 5
+        latent_var_constrains = latent_var_constrains * 5
+        reconstruction_loss = reconstruction_loss * 1000
 
         self.loss = pose_estimation_loss + view_loss + latent_var_constrains + reconstruction_loss + \
                     self.__weight_decay * regularization_loss
@@ -147,7 +153,8 @@ class VAE_deepSDF:
 
         # Construct extra needed metrics for training and validation
         self.metrics = {'pose_estimation_loss': pose_estimation_loss, 'view_loss': view_loss,
-                        'reconstruction_loss': reconstruction_loss}
+                        'reconstruction_loss': reconstruction_loss, 'KL_divergence': latent_var_constrains,
+                        'regularization_loss': regularization_loss}
 
 
 def VAE_deepSDF_estimator_fn(features, labels, mode, params):
@@ -216,6 +223,7 @@ def VAE_deepSDF_estimator_fn(features, labels, mode, params):
                                     'train_reconstruction_loss': network_graph.metrics['reconstruction_loss'],
                                     'train_view_loss': network_graph.metrics['view_loss'],
                                     'train_pose_estimation_loss': network_graph.metrics['pose_estimation_loss']}
+
             logging_hook = tf.train.LoggingTensorHook(tensors=train_tensors_to_log,
                                                       every_n_iter=params['log_every'])
 

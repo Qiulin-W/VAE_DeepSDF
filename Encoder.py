@@ -93,7 +93,7 @@ class Encoder:
 
                 self.end_point_pose = slim.separable_conv2d(self.end_point_shape, 16, [2, 2], stride=2, activation_fn=tf.nn.relu6)
 
-                self.quaternion = tf.math.l2_normalize(slim.fully_connected(slim.flatten(self.end_point_pose), 4, activation_fn=None), axis=2)
+                self.quaternion = tf.nn.l2_normalize(slim.fully_connected(slim.flatten(self.end_point_pose), 4, activation_fn=None), dim=1)
                 self.scale = slim.fully_connected(slim.flatten(self.end_point_pose), 1, activation_fn=tf.nn.sigmoid) + 0.6
 
 
