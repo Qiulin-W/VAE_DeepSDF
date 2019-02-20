@@ -219,7 +219,6 @@ def VAE_deepSDF_estimator_fn(features, labels, mode, params):
             # Construct tf.logging tensors
             train_tensors_to_log = {'epoch': network_graph.global_step // params['num_iterations'],
                                     'learning_rate': network_graph.learning_rate,
-                                    'train_total_loss': network_graph.loss,
                                     'train_reconstruction_loss': network_graph.metrics['reconstruction_loss'],
                                     'train_view_loss': network_graph.metrics['view_loss'],
                                     'train_pose_estimation_loss': network_graph.metrics['pose_estimation_loss']}
@@ -234,10 +233,9 @@ def VAE_deepSDF_estimator_fn(features, labels, mode, params):
         # Construct tf.logging tensors
         val_tensors_to_log = {'epoch': network_graph.global_step // params['num_iterations'] - 1,
                               'global_step': network_graph.global_step,
-                              'val_total_loss': network_graph.loss,
                               'val_reconstruction_loss': network_graph.metrics['reconstruction_loss'],
-                              'val_view_loss': network_graph.metrics['view_loss'],
                               'val_pose_estimation_loss': network_graph.metrics['pose_estimation_loss']}
+        
         logging_hook = tf.train.LoggingTensorHook(tensors=val_tensors_to_log, every_n_iter=params['log_every'])
 
         summary_hook = tf.train.SummarySaverHook(params['tensorboard_update_every'], output_dir=summary_output_dir,
