@@ -1,0 +1,29 @@
+{
+  "train_data_file": "L:/ISO/deepSDF/VAE_DeepSDF/tf_record/train.record",
+  "val_data_file": "L:/ISO/deepSDF/VAE_DeepSDF/tf_record/val.record",
+  "image_size": [256, 256, 1],
+  "shuffle": true,
+  "buffer_size": 1024,
+
+  "experiment_dir": "./experiments/exp_16",
+  "max_num_checkpoints": 1,
+  "pretrained_model_dir": "",
+
+  "delta": 0.1,
+  "num_epochs": 400,
+  "batch_size": 16,
+  "num_views": 8,
+  "num_sample_points": 4000,
+  "output_stride": 16,
+  "width_multiplier": 1.0,
+  "weight_decay": 1e-6,
+  "dropout_keep_prob": 1.0,
+  "enable_batchnorm": true,
+  "batchnorm_decay": 0.9997,
+  "initial_learning_rate": 1e-5,
+  "final_learning_rate":1e-6,
+  "learning_rate_decay_power":0.9,
+  "data_format": "NCHW",
+  "log_every": 10,
+  "tensorboard_update_every": 100
+}
