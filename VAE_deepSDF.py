@@ -18,11 +18,6 @@ class VAE_deepSDF:
         self.depth_map_input = input['depth_map']  #input shape: [batch, 3, 255, 255]
         self.samples = input['points']  #[batch, K, 3]
 
-        # parse the labels
-        self.gt_scale = labels['scale']  #[batch, 1]
-        self.gt_quaternion = labels['quaternion']  #[batch, 4]
-        self.gt_sdf = labels['sdf']  #[batch, K, 1]
-
         # private attribute
         # parameter settings
         self.__NORMALIZATION_FACTOR = 255
@@ -52,6 +47,7 @@ class VAE_deepSDF:
         self.__is_training = True if self.__mode == 'train' else False
 
         # public attributes
+        self.labels = labels
         self.loss = None
         self.learning_rate = None
         self.global_step = None
@@ -103,9 +99,15 @@ class VAE_deepSDF:
             self.sdf_pred = tf.reshape(decoder.end_point, [-1, self.__num_sample_points, 1])
 
     def __output(self):
+        self.cliped_sdf_pred = tf.clip_by_value(self.sdf_pred, -self.__delta, self.__delta)
 
         if self.__mode == 'predict' or self.__export == True:
             return
+
+        # parse the labels
+        self.gt_scale = self.labels['scale']  # [batch, 1]
+        self.gt_quaternion = self.labels['quaternion']  # [batch, 4]
+        self.gt_sdf = self.labels['sdf']  # [batch, K, 1]
 
         # Collect regularization losses
         regularization_loss = tf.reduce_sum(tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES))
@@ -124,7 +126,6 @@ class VAE_deepSDF:
         latent_var_constrains = (-0.5*tf.reduce_sum(1 + self.z_logvar - self.z_mu**2 - tf.exp(self.z_logvar))) / (1024*self.__object_per_batch*self.__num_views)
 
         # reconstruction loss is defined as in the DeepSDF paper
-        self.cliped_sdf_pred = tf.clip_by_value(self.sdf_pred, -self.__delta, self.__delta)
         self.cliped_sdf_gt = tf.clip_by_value(self.gt_sdf, -self.__delta, self.__delta)
         reconstruction_loss = (tf.losses.absolute_difference(self.cliped_sdf_gt, self.cliped_sdf_pred))
 
@@ -185,7 +186,7 @@ def VAE_deepSDF_estimator_fn(features, labels, mode, params):
             export_outputs={
                 # if the outputs is not dict, or any of its keys are not strings, or any of its values are not Tensor
                 # a ValueError will be raised
-                'outputs': tf.estimator.export.PredictOutput(predictions),
+                'outputs': tf.estimator.export.PredictOutput(predictions)
             })
 
     # Restore variables from a pretrained model (with the same names) except those in the last layer.
@@ -235,7 +236,7 @@ def VAE_deepSDF_estimator_fn(features, labels, mode, params):
                               'global_step': network_graph.global_step,
                               'val_reconstruction_loss': network_graph.metrics['reconstruction_loss'],
                               'val_pose_estimation_loss': network_graph.metrics['pose_estimation_loss']}
-        
+
         logging_hook = tf.train.LoggingTensorHook(tensors=val_tensors_to_log, every_n_iter=params['log_every'])
 
         summary_hook = tf.train.SummarySaverHook(params['tensorboard_update_every'], output_dir=summary_output_dir,

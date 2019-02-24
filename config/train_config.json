@@ -16,14 +16,17 @@
   "num_sample_points": 4000,
   "output_stride": 16,
   "width_multiplier": 1.0,
-  "weight_decay": 1e-5,
+  "weight_decay": 0.0,
   "dropout_keep_prob": 1.0,
   "enable_batchnorm": true,
   "batchnorm_decay": 0.9997,
-  "initial_learning_rate": 1e-5,
+  "initial_learning_rate": 1e-3,
   "final_learning_rate":1e-6,
   "learning_rate_decay_power":0.9,
   "data_format": "NCHW",
   "log_every": 10,
-  "tensorboard_update_every": 100
+  "tensorboard_update_every": 100,
+
+  "test_model_timestamp_directory": "1550956023",
+  "n_point_per_edge": 64
 }
