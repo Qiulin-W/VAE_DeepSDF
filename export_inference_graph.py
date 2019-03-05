@@ -48,6 +48,7 @@ def main():
             'dropout_keep_prob': args.dropout_keep_prob,
             'batchnorm': args.enable_batchnorm,
             'batchnorm_decay': args.batchnorm_decay,
+            'latent_dim': args.latent_dim,
             'export': True
         })
 

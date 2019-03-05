@@ -21,7 +21,7 @@ def main():
     # config.gpu_options.per_process_gpu_memory_fraction = 0.3
     config.gpu_options.allow_growth = True
     # os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-    # os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+    os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 
     # Read the arguments to get them from a JSON configuration file
     args = parse_args()
@@ -63,7 +63,8 @@ def main():
             'weight_decay': args.weight_decay,
             'dropout_keep_prob': args.dropout_keep_prob,
             'batchnorm': args.enable_batchnorm,
-            'batchnorm_decay': args.batchnorm_decay
+            'batchnorm_decay': args.batchnorm_decay,
+            'latent_dim': args.latent_dim
         }, warm_start_from=warm_start_from)
 
     if args.train_data_file == "" or args.val_data_file == "":

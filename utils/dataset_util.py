@@ -87,7 +87,7 @@ def parse_record(raw_record, image_size, num_sample_points):
 
 
 def input_fn(data_file, image_size, batch_size=16, num_epochs_to_repeat=1, buffer_size=128,
-             num_sample_points=3000):
+             num_sample_points=4000):
     """
     input_fn in the tf.data input pipeline
     ----
@@ -105,7 +105,7 @@ def input_fn(data_file, image_size, batch_size=16, num_epochs_to_repeat=1, buffe
     :param buffer_size: an integer to indicate the size of the buffer. If it equals to the whole dataset size, all of
     the records will be loaded in memory
 
-    :param is_training: A boolean to indicate whether training is being done or not
+    :param num_sample_points: Number of points sampled in the training set
 
     ----
     Return:

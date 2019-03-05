@@ -6,7 +6,7 @@ from utils.layers import inverted_residual_block_sequence, create_arg_scope
 class Encoder:
     def __init__(self, net, kernel_size=(3, 3), downsampling_factor=16, width_multiplier=1.0, weight_decay=0.0,
                  dropout_keep_prob=0.8, batchnorm=True, batchnorm_decay=0.999, is_training=True, data_format='NCHW',
-                 latent_variable_dim=1024, scope='Encoder'):
+                 latent_variable_dim=2048, scope='Encoder'):
         """
 
         :param net: is the input network. A tensor of size [batch, height, width, channels] or [batch, channels, height, width] depending on the data format [NHWC or NCHW]
@@ -27,7 +27,7 @@ class Encoder:
 
         :param is_training: a boolean used for both [batchnorm and dropout] layers which should be true during training and false during testing
 
-        :param data_format: 'NCHW' or 'NHWC'. It's proved that 'NCHW' provides a performance boost for GPUs. However, 'NHWC' is the only one that can be used for CPU computations
+        :param data_format: 'NHWC' only
 
         :param latent_variable_dim: The dimensions of latent variable for representing the shapes
 
@@ -37,8 +37,8 @@ class Encoder:
         if downsampling_factor not in [8, 16]:
             raise ValueError("Currently supported downsampling factors are 8 and 16")
 
-        if data_format not in ['NCHW', 'NHWC']:
-            raise ValueError("Data format is either NCHW or NHWC")
+        if data_format not in ['NHWC', 'NCHW']:
+            raise ValueError("Data format is not NHWC")
 
         # These are the strides as proposed in the paper if the downsampling factor is 16
         s1 = 2
@@ -50,24 +50,24 @@ class Encoder:
         # 2. c: number of output filters
         # 3. n: number of repeated layers in the block
         # 4. s: the initial stride for downsampling
-        network_settings = [{'t': -1, 'c': 32, 'n': 1, 's': s1},
+        network_settings = [{'t': -1, 'c': 8, 'n': 1, 's': s1},
                             {'t': 1, 'c': 16, 'n': 1, 's': 1},
-                            {'t': 6, 'c': 24, 'n': 2, 's': 1},
-                            {'t': 6, 'c': 32, 'n': 3, 's': 2},
+                            {'t': 6, 'c': 32, 'n': 2, 's': 1},
+                            {'t': 6, 'c': 64, 'n': 3, 's': 2},
                             {'t': 6, 'c': 64, 'n': 4, 's': 2},
-                            {'t': 6, 'c': 96, 'n': 3, 's': 1},
-                            {'t': 6, 'c': 160, 'n': 3, 's': 2},
-                            {'t': 6, 'c': 320, 'n': 1, 's': 1},
-                            {'t': None, 'c': 1280, 'n': 1, 's': 1}]
+                            {'t': 6, 'c': 128, 'n': 3, 's': 1},
+                            {'t': 6, 'c': 256, 'n': 3, 's': 2},
+                            {'t': 6, 'c': 512, 'n': 1, 's': 1},
+                            {'t': None, 'c': 1024, 'n': 1, 's': 1}]
 
         with tf.variable_scope(scope):
             with slim.arg_scope(
                     create_arg_scope(weight_decay, dropout_keep_prob, batchnorm, batchnorm_decay, is_training,
-                                          data_format)):
+                                     data_format)):
                 # Feature Extraction part
                 # Layer 0
                 self.end_point = slim.conv2d(net, int(network_settings[0]['c'] * width_multiplier), kernel_size,
-                    stride=network_settings[0]['s'], activation_fn=tf.nn.relu6)
+                                             stride=network_settings[0]['s'], activation_fn=tf.nn.leaky_relu)
 
                 # Block sequences 1 to 7. Each one takes settings from the above array.
                 for i in range(1, 7):
@@ -81,20 +81,18 @@ class Encoder:
                                                                          kernel_size)
                 # Last Layer
                 self.end_point = slim.conv2d(self.end_point, int(network_settings[8]['c'] * width_multiplier), 1,
-                                                stride=network_settings[8]['s'], activation_fn=tf.nn.relu6)
+                                             stride=network_settings[8]['s'], activation_fn=tf.nn.leaky_relu)
 
                 # build two branches for shape latent variables and pose estimates
-                self.end_point_shape = slim.separable_conv2d(self.end_point, 64, [1, 1], stride=1, activation_fn=tf.nn.relu6)
+                self.latent_variable_dim = latent_variable_dim
 
-                self.shape_mu = slim.fully_connected(slim.flatten(self.end_point_shape), latent_variable_dim,
-                                                                    activation_fn=None)
-                self.shape_logvar = slim.fully_connected(slim.flatten(self.end_point_shape), latent_variable_dim,
-                                                            activation_fn=None)
+                self.shape_mu = slim.fully_connected(slim.flatten(self.end_point), self.latent_variable_dim,
+                                                     activation_fn=None)
+                self.shape_logvar = slim.fully_connected(slim.flatten(self.end_point), self.latent_variable_dim,
+                                                         activation_fn=None)
 
-                self.end_point_pose = slim.separable_conv2d(self.end_point_shape, 16, [2, 2], stride=2, activation_fn=tf.nn.relu6)
-
-                self.quaternion = tf.nn.l2_normalize(slim.fully_connected(slim.flatten(self.end_point_pose), 4, activation_fn=None), dim=1)
-                self.scale = slim.fully_connected(slim.flatten(self.end_point_pose), 1, activation_fn=tf.nn.sigmoid) + 0.6
+                self.quaternion = tf.nn.l2_normalize(slim.fully_connected(slim.flatten(self.end_point), 4, activation_fn=None), dim=1)
+                self.scale = slim.fully_connected(slim.flatten(self.end_point), 1, activation_fn=tf.nn.sigmoid) + 0.6
 
 
 # Test drive for encoder
@@ -107,4 +105,4 @@ if __name__ == '__main__':
     encoder = Encoder(x, (3, 3), 16, 1)
     # Success message
     print("Encoder is built successfully.")
-    print(encoder.shape_mu.shape, encoder.shape_logvar.shape, encoder.quaternion.shape, encoder.scale.shape)
+    print(encoder.end_point.shape, encoder.shape_logvar.shape, encoder.quaternion.shape, encoder.scale.shape)
