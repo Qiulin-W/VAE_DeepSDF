@@ -99,7 +99,7 @@ class Encoder:
 if __name__ == '__main__':
     tf.reset_default_graph()
     # Creating a dummy placeholder
-    x = tf.placeholder(tf.float32, [None, 256, 256, 1])
+    x = tf.placeholder(tf.float32, [None, 1, 256, 256])
     # Class instantiation
     print("Building Encoder...")
     encoder = Encoder(x, (3, 3), 16, 1)

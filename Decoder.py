@@ -51,36 +51,30 @@ class Decoder:
                         self.end_point = slim.dropout(self.end_point)
 
                         self.end_point = slim.fully_connected(self.end_point, 512, activation_fn=tf.nn.leaky_relu)
-                        self.end_point = slim.dropout(self.end_point)
 
-                        self.end_point = slim.fully_connected(self.end_point, 512, activation_fn=tf.nn.leaky_relu)
+                        self.mid_point_1 = tf.concat([self.end_point, self.input], 2)
 
-                        self.mid_point_1 = tf.concat([self.end_point, self.input], 1)
-
-                        self.end_point = slim.fully_connected(self.mid_point_1, 512, activation_fn=tf.nn.leaky_relu)
-                        self.end_point = slim.dropout(self.end_point)
-
-                        self.end_point = slim.fully_connected(self.end_point, 512, activation_fn=tf.nn.leaky_relu)
+                        self.end_point = slim.fully_connected(self.mid_point_1, 512, activation_fn=tf.nn.tanh)
                         self.end_point = slim.dropout(self.end_point)
 
                         self.end_point = slim.fully_connected(self.end_point, 512, activation_fn=tf.nn.leaky_relu)
                         self.end_point = slim.dropout(self.end_point)
 
-                        self.end_point = slim.fully_connected(self.end_point, 512, activation_fn=None)
+                        self.end_point = slim.fully_connected(self.end_point, 512, activation_fn=tf.nn.tanh)
 
-                        self.mid_point_2 = tf.concat([self.end_point, self.mid_point_1], 1)
+                        self.mid_point_2 = tf.concat([self.end_point, self.mid_point_1], 2)
 
-                        self.end_point = slim.fully_connected(self.mid_point_2, 1, activation_fn=tf.nn.leaky_relu)
+                        self.end_point = slim.fully_connected(self.mid_point_2, 512, activation_fn=tf.nn.leaky_relu)
                         self.end_point = slim.dropout(self.end_point)
 
-                        self.end_point = slim.fully_connected(self.end_point, 1, activation_fn=None)
+                        self.end_point = slim.fully_connected(self.end_point, 1, activation_fn=tf.nn.tanh)
 
 
 # Test drive for decoder
 if __name__ == '__main__':
     tf.reset_default_graph()
     # Creating a dummy placeholder
-    x = tf.placeholder(tf.float32, [None, 2051])  # 2051 latent variables + 3 coordinates
+    x = tf.placeholder(tf.float32, [None, 4000, 2051])  # 2051 latent variables + 3 coordinates
     # Class instantiation
     print("Building Decoder...")
     decoder = Decoder(x)

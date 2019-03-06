@@ -75,7 +75,7 @@ class VAE_deepSDF:
         # Network Construction begins here
         with tf.variable_scope(self.__scope):
             # encoder
-            encoder = Encoder(self.depth_map_input-128, 3, self.__downsampling_factor,
+            encoder = Encoder(self.depth_map_input/self.__NORMALIZATION_FACTOR - 0.5, 3, self.__downsampling_factor,
                               self.__width_multiplier, self.__weight_decay,
                               self.__dropout_keep_prob, self.__batchnorm,
                               self.__batchnorm_decay, self.__is_training, self.__data_format, self.__latent_dim)
@@ -88,18 +88,17 @@ class VAE_deepSDF:
             # reparameterization
             eps = tf.random_normal(shape=tf.shape(self.z_mu),
                                    mean=0, stddev=1, dtype=tf.float32) #[batch, 1024]
-            self.z = tf.add(self.z_mu, tf.mul(tf.sqrt(tf.exp(self.z_logvar)), eps))  #[batch, 1024]
+            self.z = tf.add(self.z_mu, tf.multiply(tf.sqrt(tf.exp(self.z_logvar)), eps))  #[batch, 1024]
 
 
             # decoder
             z = tf.expand_dims(self.z, 1)
             decoder_input = tf.tile(z, multiples=[1, self.__num_sample_points, 1])  #[batch, K, 1024]
             decoder_input = tf.concat([decoder_input, self.samples], axis=2)   #[batch, K, 1027]
-            decoder_input = tf.reshape(decoder_input, shape=[-1, decoder_input.shape[2]])
             decoder = Decoder(decoder_input)
 
             # output sdf values
-            self.sdf_pred = tf.reshape(decoder.end_point, [self.__batch_size, self.__num_sample_points, 1])
+            self.sdf_pred = decoder.end_point
 
     def __output(self):
         self.cliped_sdf_pred = tf.clip_by_value(self.sdf_pred, -self.__delta, self.__delta)
@@ -120,29 +119,29 @@ class VAE_deepSDF:
         #                       + tf.losses.mean_squared_error(self.scale, self.gt_scale)
 
         # view loss is defined as the variance of z_mu
-        #view_loss = 0
-        #for i in range(self.__object_per_batch):
-        #    _, var_z_mu = tf.nn.moments(x=self.z_mu[i*self.__num_views:(i+1)*self.__num_views, :], axes=[0])  # [1024, ]
-        #    view_loss += tf.reduce_sum(var_z_mu)
-        #view_loss = view_loss / (self.__latent_dim*self.__object_per_batch)
+        view_loss = 0
+        for i in range(self.__object_per_batch):
+            _, var_z_mu = tf.nn.moments(x=self.z_mu[i*self.__num_views:(i+1)*self.__num_views, :], axes=[0])  # [1024, ]
+            view_loss += tf.reduce_sum(var_z_mu)
+        view_loss = view_loss / (self.__latent_dim*self.__object_per_batch)
 
         # KL divergence for posterior and prior of the latent variable
         latent_loss = -0.5 * tf.reduce_sum(1 + self.z_logvar - tf.square(self.z_mu) - tf.exp(self.z_logvar)) / (self.__latent_dim*self.__batch_size)
 
         # reconstruction loss is defined as in the DeepSDF paper
         self.cliped_sdf_gt = tf.clip_by_value(self.gt_sdf, -self.__delta, self.__delta)
-        reconstruction_loss = tf.losses.absolute_difference(self.gt_sdf, self.sdf_pred)
-        #reconstruction_loss = tf.nn.l2_loss(self.cliped_sdf_gt - self.cliped_sdf_pred)/(self.__num_sample_points*self.__batch_size)
+        reconstruction_loss = tf.losses.absolute_difference(self.cliped_sdf_gt, self.cliped_sdf_pred)
+        #reconstruction_loss = tf.nn.l2_loss(self.gt_sdf - self.sdf_pred)/(self.__num_sample_points*self.__batch_size)
 
         # try different factors here to train the model
         #pose_estimation_loss = pose_estimation_loss * 0
-        #view_loss = view_loss * 0
+        view_loss = view_loss * 10
         latent_loss = latent_loss * 10
         reconstruction_loss = reconstruction_loss * 500
 
         #self.loss = pose_estimation_loss + view_loss + latent_var_constrains + reconstruction_loss + \
         #            self.__weight_decay * regularization_loss
-        self.loss = latent_loss + reconstruction_loss
+        self.loss = latent_loss + reconstruction_loss + view_loss
 
         self.global_step = tf.train.get_or_create_global_step()
 
@@ -159,7 +158,8 @@ class VAE_deepSDF:
             self.train_op = optimizer.minimize(self.loss, self.global_step)
 
         # Construct extra needed metrics for training and validation
-        self.metrics = {#'pose_estimation_loss': pose_estimation_loss, 'view_loss': view_loss,
+        self.metrics = {#'pose_estimation_loss': pose_estimation_loss,
+                        'view_loss': view_loss,
                         'reconstruction_loss': reconstruction_loss, 'latent_loss': latent_loss,
                         'regularization_loss': regularization_loss}
 
@@ -216,8 +216,8 @@ def VAE_deepSDF_estimator_fn(features, labels, mode, params):
         # Construct extra metrics for Training and Evaluation
         extra_summary_ops = [tf.summary.scalar('total_loss', network_graph.loss),
                              tf.summary.scalar('reconstruction_loss', network_graph.metrics['reconstruction_loss']),
-                             tf.summary.scalar('latent_loss', network_graph.metrics['latent_loss'])]
-                             #tf.summary.scalar('view_loss', network_graph.metrics['view_loss'])]
+                             tf.summary.scalar('latent_loss', network_graph.metrics['latent_loss']),
+                             tf.summary.scalar('view_loss', network_graph.metrics['view_loss'])]
         #tf.summary.scalar('pose_estimation_loss', network_graph.metrics['pose_estimation_loss']
 
         # TFEstimator automatically creates a summary hook during training. So, no need to create one.
@@ -228,7 +228,8 @@ def VAE_deepSDF_estimator_fn(features, labels, mode, params):
             train_tensors_to_log = {'epoch': network_graph.global_step // params['num_iterations'],
                                     'learning_rate': network_graph.learning_rate,
                                     'train_reconstruction_loss': network_graph.metrics['reconstruction_loss'],
-                                    'train_latent_loss': network_graph.metrics['latent_loss']}
+                                    'train_latent_loss': network_graph.metrics['latent_loss'],
+                                    'train_view_loss': network_graph.metrics['view_loss']}
             # 'train_pose_estimation_loss': network_graph.metrics['pose_estimation_loss']
 
             logging_hook = tf.train.LoggingTensorHook(tensors=train_tensors_to_log,
@@ -242,7 +243,8 @@ def VAE_deepSDF_estimator_fn(features, labels, mode, params):
         val_tensors_to_log = {'epoch': network_graph.global_step // params['num_iterations'] - 1,
                               'global_step': network_graph.global_step,
                               'val_reconstruction_loss': network_graph.metrics['reconstruction_loss'],
-                              'val_latent_loss': network_graph.metrics['latent_loss']}
+                              'val_latent_loss': network_graph.metrics['latent_loss'],
+                              'val_view_loss': network_graph.metrics['view_loss']}
         # 'val_pose_estimation_loss': network_graph.metrics['pose_estimation_loss']
 
         logging_hook = tf.train.LoggingTensorHook(tensors=val_tensors_to_log, every_n_iter=params['log_every'])
