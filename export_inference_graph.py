@@ -15,10 +15,10 @@ import logging
 def main():
     # This may provide some performance boost
     os.environ['TF_ENABLE_WINOGRAD_NONFUSED'] = '1'
-    config = tf.ConfigProto()
-    config.gpu_options.allow_growth = True
+    # config = tf.ConfigProto()
+    # config.gpu_options.allow_growth = True
     # os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-    os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+    # os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 
     # Read the arguments to get them from a JSON configuration file
     args = parse_args()
@@ -30,8 +30,6 @@ def main():
         params={
             'experiment_dir': args.experiment_dir,
             'pretrained_model_dir': args.pretrained_model_dir,
-            'object_per_batch': args.batch_size//args.num_views,
-            'num_views': args.num_views,
             'num_sample_points': args.num_sample_points,
             'delta': args.delta,
             'initial_learning_rate': args.initial_learning_rate,
@@ -49,15 +47,20 @@ def main():
             'batchnorm': args.enable_batchnorm,
             'batchnorm_decay': args.batchnorm_decay,
             'latent_dim': args.latent_dim,
+            'batch_size': args.batch_size,
             'export': True
         })
 
     # Export the model
 
     def serving_input_receiver_fn():
-        features = {'depth_map': tf.placeholder(tf.float32, [None, args.image_size[0], args.image_size[1],
-                                                             args.image_size[2]], name='depth_map_tensor'),
-                    'points': tf.placeholder(tf.float32, [None, None, 3], name='points')}
+        features = {'depth_map': tf.placeholder(tf.float32, [None, args.image_size[0], args.image_size[1]],
+                                                name='depth_map_tensor'),
+                    'normal_map': tf.placeholder(tf.float32, [None, args.image_size[0], args.image_size[1],
+                                                 args.image_size[2]], name='normal_map_tensor'),
+                    'foreground_map': tf.placeholder(tf.float32, [None, args.image_size[0], args.image_size[1]],
+                                                     name='foreground_map_tensor'),
+                    'points': tf.placeholder(tf.float32, [None, args.num_sample_points, 3], name='points')}
         receiver_tensors = features
 
         return tf.estimator.export.ServingInputReceiver(
