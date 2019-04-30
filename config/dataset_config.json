@@ -1,13 +1,14 @@
 {
   "VALIDATION_EXISTS" : true,
-  "TRAIN_TF_RECORD_NAME" : "/home/qiulin/VAE_DeepSDF/tf_record/train_small_batch.record",
-  "VAL_TF_RECORD_NAME" : "/home/qiulin/VAE_DeepSDF/tf_record/val_small_batch.record",
-  "TRAIN_DATA_LIST_NAME" : "/home/qiulin/VAE_DeepSDF/dataset/train_small_batch.txt",
-  "VAL_DATA_LIST_NAME" : "/home/qiulin/VAE_DeepSDF/dataset/val_small_batch.txt",
-  "DEPTH_MAP_DIR" : "/home/qiulin/VAE_DeepSDF/dataset/depth/",
-  "SDF_DIR" : "/home/qiulin/VAE_DeepSDF/dataset/sdf/",
-  "POSE_DIR" : "/home/qiulin/VAE_DeepSDF/dataset/pose/",
+  "TRAIN_TF_RECORD_NAME" : "L:/ISO/deepSDF/VAE_DeepSDF/tf_record/train_small_10000.record",
+  "VAL_TF_RECORD_NAME" : "L:/ISO/deepSDF/VAE_DeepSDF/tf_record/val_small_10000.record",
+  "TRAIN_DATA_LIST_NAME" : "L:/ISO/deepSDF/VAE_DeepSDF/dataset/train_small.txt",
+  "VAL_DATA_LIST_NAME" : "L:/ISO/deepSDF/VAE_DeepSDF/dataset/val_small.txt",
+  "DEPTH_MAP_DIR" : "L:/ISO/deepSDF/VAE_DeepSDF/dataset/depth_jpg",
+  "SDF_DIR" : "L:/ISO/deepSDF/VAE_DeepSDF/dataset/sdf_500000",
+  "POSE_DIR" : "L:/ISO/deepSDF/VAE_DeepSDF/dataset/pose",
   "OUTPUT_DM_HEIGHT" : 256,
   "OUTPUT_DM_WIDTH" : 256,
-  "NUM_VIEWS" : 8
+  "NUM_VIEWS" : 8,
+  "NUM_POINTS" : 10000
 }

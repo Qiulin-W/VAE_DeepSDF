@@ -30,9 +30,9 @@ def inverted_residual_block(net, in_filters, out_filters, expansion_factor, stri
         raise ValueError("Strides should be either 1 or 2")
 
     res = slim.conv2d(net, in_filters * expansion_factor, kernel_size, stride=1,
-                      activation_fn=tf.nn.leaky_relu)
+                      activation_fn=tf.nn.relu6)
 
-    res = slim.separable_conv2d(res, None, kernel_size, 1, stride=stride, activation_fn=tf.nn.leaky_relu)
+    res = slim.separable_conv2d(res, None, kernel_size, 1, stride=stride, activation_fn=tf.nn.relu6)
 
     res = slim.conv2d(res, out_filters, kernel_size, stride=1, activation_fn=None)
 
@@ -109,8 +109,7 @@ def create_arg_scope(weight_decay=0.0, dropout_keep_prob=0.8, batchnorm=True, ba
     # L2 Regularization
     regularizer = tf.contrib.layers.l2_regularizer(weight_decay)
     # Glorot initializer is the default initializer
-    initializer_conv2d = tf.contrib.layers.xavier_initializer_conv2d()
-    initializer_fc = tf.contrib.layers.xavier_initializer()
+    initializer = tf.glorot_normal_initializer()
     # Batch normalization is used if enabled
     normalizer_fn = slim.batch_norm if batchnorm else None
     normalizer_params = {'is_training': is_training, 'center': True, 'scale': True,
@@ -118,10 +117,10 @@ def create_arg_scope(weight_decay=0.0, dropout_keep_prob=0.8, batchnorm=True, ba
 
     # Create an arg scope for the layers conv2d and separable_conv2d
     with slim.arg_scope([slim.conv2d, slim.separable_conv2d], data_format=data_format,
-                        weights_initializer=initializer_conv2d,
+                        weights_initializer=initializer,
                         weights_regularizer=regularizer, normalizer_fn=normalizer_fn,
                         normalizer_params=normalizer_params):
-        with slim.arg_scope([slim.fully_connected], weights_initializer=initializer_fc,
+        with slim.arg_scope([slim.fully_connected], weights_initializer=initializer,
                             weights_regularizer=regularizer, normalizer_fn=normalizer_fn,
                             normalizer_params=normalizer_params):
             # Create an arg scope for batch_norm layer

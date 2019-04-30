@@ -19,9 +19,9 @@ def main():
     os.environ['TF_ENABLE_WINOGRAD_NONFUSED'] = '1'
     config = tf.ConfigProto()
     # config.gpu_options.per_process_gpu_memory_fraction = 0.3
-    config.gpu_options.allow_growth = True
+    # config.gpu_options.allow_growth = True
     # os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-    os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+    # os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 
     # Read the arguments to get them from a JSON configuration file
     args = parse_args()
@@ -46,8 +46,6 @@ def main():
         params={
             'experiment_dir': args.experiment_dir,
             'pretrained_model_dir': args.pretrained_model_dir,
-            'object_per_batch': args.batch_size//args.num_views,
-            'num_views': args.num_views,
             'num_sample_points': args.num_sample_points,
             'delta': args.delta,
             'initial_learning_rate': args.initial_learning_rate,
@@ -64,6 +62,7 @@ def main():
             'dropout_keep_prob': args.dropout_keep_prob,
             'batchnorm': args.enable_batchnorm,
             'batchnorm_decay': args.batchnorm_decay,
+            'batch_size': args.batch_size,
             'latent_dim': args.latent_dim
         }, warm_start_from=warm_start_from)
 

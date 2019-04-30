@@ -4,6 +4,7 @@ Utility functions for creating data sets.
 
 import tensorflow as tf
 import numpy as np
+import random
 
 
 def int64_feature(value):
@@ -53,12 +54,20 @@ def parse_record(raw_record, image_size, num_sample_points):
             tf.FixedLenFeature((), tf.int64),
         'depth_map/width':
             tf.FixedLenFeature((), tf.int64),
-        'depth_map/gray-scale':
+        'depth_map/encoded':
             tf.FixedLenFeature((), tf.string, default_value=''),
-        'scale':
-            tf.VarLenFeature(tf.float32),
-        'quaternion':
-            tf.VarLenFeature(tf.float32),
+        'normal_map/height':
+            tf.FixedLenFeature((), tf.int64),
+        'normal_map/width':
+            tf.FixedLenFeature((), tf.int64),
+        'normal_map/encoded':
+            tf.FixedLenFeature((), tf.string, default_value=''),
+        'foreground_map/height':
+            tf.FixedLenFeature((), tf.int64),
+        'foreground_map/width':
+            tf.FixedLenFeature((), tf.int64),
+        'foreground_map/encoded':
+            tf.FixedLenFeature((), tf.string, default_value=''),
         'points':
             tf.VarLenFeature(tf.float32),
         'sdf':
@@ -67,27 +76,30 @@ def parse_record(raw_record, image_size, num_sample_points):
 
     # The following lines are used to extract an image and a label from a TFRecord
     parsed = tf.parse_single_example(raw_record, keys_to_features)
+    seed = random.randint(0, 16384)
 
-    depth_map = tf.to_float(tf.decode_raw(parsed['depth_map/gray-scale'], tf.uint8))
+    depth_map = tf.to_float(tf.decode_raw(parsed['depth_map/encoded'], tf.uint8))
     depth_map = tf.reshape(depth_map, image_size)
 
-    scale = tf.sparse_tensor_to_dense(parsed['scale'], default_value=0)
-    scale = tf.reshape(scale, [1])
+    normal_map = tf.to_float(tf.decode_raw(parsed['normal_map/encoded'], tf.uint8))
+    normal_map = tf.reshape(normal_map, image_size)
 
-    quaternion = tf.sparse_tensor_to_dense(parsed['quaternion'], default_value=0)
-    quaternion = tf.reshape(quaternion, [4])
+    foreground_map = tf.to_float(tf.decode_raw(parsed['foreground_map/encoded'], tf.uint8))
+    foreground_map = tf.reshape(foreground_map, image_size)
 
     points = tf.sparse_tensor_to_dense(parsed['points'], default_value=0)
-    points = tf.reshape(points, [num_sample_points, 3])
+    points = tf.reshape(points, [500000, 3])
+    points = tf.random_shuffle(points, seed=seed)[0:num_sample_points, :]
 
     sdf = tf.sparse_tensor_to_dense(parsed['sdf'], default_value=0)
-    sdf = tf.reshape(sdf, [num_sample_points, 1])
+    sdf = tf.reshape(sdf, [500000, 1])
+    sdf = tf.random_shuffle(sdf, seed=seed)[0:num_sample_points, :]
 
-    return depth_map, points, scale, quaternion, sdf
+    return depth_map, normal_map, foreground_map, points, sdf
 
 
-def input_fn(data_file, image_size, batch_size=16, num_epochs_to_repeat=1, buffer_size=128,
-             num_sample_points=4000):
+def input_fn(data_file, image_size, batch_size=4, num_epochs_to_repeat=1, buffer_size=128,
+             num_sample_points=16384):
     """
     input_fn in the tf.data input pipeline
     ----
@@ -105,7 +117,7 @@ def input_fn(data_file, image_size, batch_size=16, num_epochs_to_repeat=1, buffe
     :param buffer_size: an integer to indicate the size of the buffer. If it equals to the whole dataset size, all of
     the records will be loaded in memory
 
-    :param num_sample_points: Number of points sampled in the training set
+    :param is_training: A boolean to indicate whether training is being done or not
 
     ----
     Return:
@@ -132,12 +144,12 @@ def input_fn(data_file, image_size, batch_size=16, num_epochs_to_repeat=1, buffe
     iterator = dataset.make_one_shot_iterator()
     next_item = iterator.get_next()
 
-    features = {'depth_map': next_item[0],
-                'points': next_item[1]}
+    features = {'depth_map': next_item[0][:, :, :, 0],
+                'normal_map': next_item[1],
+                'foreground_map': next_item[2][:, :, :, 0],
+                'points': next_item[3]}
 
-    labels = {'scale': next_item[2],
-              'quaternion': next_item[3],
-              'sdf': next_item[4]}
+    labels = {'sdf': next_item[4]}
 
     return features, labels
 
